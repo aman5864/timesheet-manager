@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: timesheet-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn timesheet.wsgi:application
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: timesheet.settings
+      - key: SECRET_KEY
+        value: django-insecure-#j3uqtmf%40z6b2m!p!x5mb7l^-m0*5kv^01+zxcqagj8ws33*
