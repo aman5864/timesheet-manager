@@ -1,0 +1,74 @@
+{% extends 'timesheet_app/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+
+      <!-- Card Layout -->
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">{% if update %}Update{% else %}Add{% endif %} Timesheet Entry</h4>
+        </div>
+
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Styled Error Message -->
+            {% if form.errors %}
+              <div class="alert alert-danger">
+                <strong>Please fix the following errors:</strong>
+                <ul class="mb-0">
+                  {% for field in form %}
+                    {% for error in field.errors %}
+                      <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                  {% endfor %}
+                  {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+
+            <!-- Manually rendered form fields with Bootstrap classes -->
+            <div class="mb-3">
+              <label for="id_date" class="form-label">Date</label>
+              <input type="date" name="date" class="form-control" id="id_date" value="{{ form.date.value|default:'' }}">
+            </div>
+
+            <div class="mb-3">
+              <label for="id_task" class="form-label">Task</label>
+              <input type="text" name="task" class="form-control" id="id_task" value="{{ form.task.value|default:'' }}">
+            </div>
+
+            <div class="mb-3">
+              <label for="id_time_taken" class="form-label">Time Taken (hrs)</label>
+              <input type="number" step="0.01" name="time_taken" class="form-control" id="id_time_taken" value="{{ form.time_taken.value|default:'' }}">
+            </div>
+
+            <div class="mb-3">
+              <label for="id_ticket_number" class="form-label">Ticket Number</label>
+              <input type="text" name="ticket_number" class="form-control" id="id_ticket_number" value="{{ form.ticket_number.value|default:'' }}">
+            </div>
+
+            <div class="mb-3">
+              <label for="id_description" class="form-label">Description</label>
+              <textarea name="description" class="form-control" id="id_description" rows="4">{{ form.description.value|default:'' }}</textarea>
+            </div>
+
+            <!-- Buttons -->
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'week_view' %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-success">{% if update %}Update{% else %}Save{% endif %}</button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

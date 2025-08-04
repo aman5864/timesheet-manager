@@ -1,0 +1,16 @@
+{% extends "timesheet_app/base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height: 90vh;">
+  <div class="card p-4 shadow-lg" style="min-width: 350px; max-width: 500px; width: 100%;">
+    <h3 class="text-center mb-4">📝 Create an Account</h3>
+
+    {% include "timesheet_app/_form.html" with form=form submit_btn_text="Register" submit_btn_class="btn-success" %}
+
+    <p class="mt-4 mb-0 text-center text-muted">
+      Already have an account?
+      <a href="{% url 'login' %}">Login here</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

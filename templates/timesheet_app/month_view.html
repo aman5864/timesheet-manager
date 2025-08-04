@@ -1,0 +1,140 @@
+{% extends 'timesheet_app/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>{{ month_name }}, {{ year }}</h2>
+  <div>
+    <a href="{% url 'month_view' prev_month.0 prev_month.1 %}" class="btn btn-outline-primary btn-sm me-2">← Prev Month</a>
+    <a href="{% url 'month_view' next_month.0 next_month.1 %}" class="btn btn-outline-primary btn-sm">Next Month →</a>
+  </div>
+</div>
+
+<!-- Success Message (hidden by default) -->
+<div id="downloadSuccess" class="alert alert-success d-none" role="alert"
+     style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; min-width: 200px;">
+  ✅ File downloaded successfully!
+</div>
+
+<!-- Download Excel Button -->
+<div class="mb-3 text-end">
+  <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#downloadModal">
+    ⬇️ Download Excel
+  </button>
+</div>
+
+<!-- Modal for Excel Options -->
+<div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="downloadModalLabel">Include Time Spent?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Do you want to include <strong>Time Spent</strong> in the Excel export?
+      </div>
+      <div class="modal-footer">
+        <a href="{% url 'export_month_excel' year month %}?include_time=no&js=1"
+          class="btn btn-outline-secondary"
+          onclick="handleDownload(event, this)">No</a>
+
+        <a href="{% url 'export_month_excel' year month %}?include_time=yes&js=1"
+          class="btn btn-success"
+          onclick="handleDownload(event, this)">Yes</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Timesheet Table -->
+<div class="table-responsive">
+  <table class="table table-bordered align-middle text-center">
+    <thead class="table-dark">
+      <tr>
+        <th>Day</th>
+        <th>Date</th>
+        <th colspan="5">Tasks</th>
+        <th>Total Hours</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day in days %}
+        <tr class="{% if day.is_weekend %}bg-light text-muted{% endif %}">
+          <td>{{ day.day_name }}</td>
+          <td>{{ day.date }}</td>
+
+          {% if day.is_weekend %}
+            <td colspan="5">Weekly Off</td>
+            <td>-</td>
+
+          {% elif day.entries %}
+            <td colspan="5" class="text-start">
+              <div class="d-flex flex-column gap-2">
+                {% for entry in day.entries %}
+                  <div class="border rounded p-2 bg-light-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <span class="badge bg-primary me-1">{{ entry.task }}</span>
+                        <span class="badge bg-secondary ms-2">{{ entry.ticket_number }}</span>
+                      </div>
+                      <div>
+                        <a href="{% url 'update_entry' entry.pk %}" class="btn btn-sm btn-outline-warning">✎</a>
+                        <a href="{% url 'delete_entry' entry.pk %}" class="btn btn-sm btn-outline-danger">🗑</a>
+                      </div>
+                    </div>
+                    <small class="text-muted d-block mt-1" data-bs-toggle="tooltip" title="{{ entry.description }}">
+                      {{ entry.description|truncatewords:12 }}
+                    </small>
+                  </div>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="fw-bold text-primary">
+              {{ day.total_time|default:"0.0" }} hrs
+            </td>
+
+          {% else %}
+            <td colspan="5" class="text-muted">No entry</td>
+            <td>-</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Scripts -->
+<script>
+  function handleDownload(event, link) {
+    event.preventDefault();
+    const modalEl = document.getElementById('downloadModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+
+    // Delay download to allow modal to close
+    setTimeout(() => {
+      // Create an invisible <a> element for download
+      const tempLink = document.createElement('a');
+      tempLink.href = link.href;
+      tempLink.download = '';
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      document.body.removeChild(tempLink);
+
+      // Show success message for 3 seconds
+      const successAlert = document.getElementById("downloadSuccess");
+      successAlert.classList.remove("d-none");
+      setTimeout(() => {
+        successAlert.classList.add("d-none");
+      }, 3000);
+    }, 300);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+</script>
+{% endblock %}

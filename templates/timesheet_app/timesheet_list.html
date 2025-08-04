@@ -1,0 +1,75 @@
+{% extends 'timesheet_app/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Week {{ week }}, {{ year }}</h2>
+  <div>
+    <a href="{% url 'week_view_custom' prev_week.0 prev_week.1 %}" class="btn btn-outline-primary btn-sm me-2">← Prev Week</a>
+    <a href="{% url 'week_view_custom' next_week.0 next_week.1 %}" class="btn btn-outline-primary btn-sm">Next Week →</a>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-bordered align-middle text-center">
+    <thead class="table-dark">
+      <tr>
+        <th>Day</th>
+        <th>Date</th>
+        <th colspan="5">Tasks</th>
+        <th>Total Hours</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day in week_data %}
+        <tr class="{% if day.is_weekend %}bg-light text-muted{% endif %}">
+          <td>{{ day.day_name }}</td>
+          <td>{{ day.date }}</td>
+
+          {% if day.is_weekend %}
+            <td colspan="5">Weekly Off</td>
+            <td>-</td>
+
+          {% elif day.entries %}
+            <td colspan="5" class="text-start">
+              <div class="d-flex flex-column gap-2">
+                {% for entry in day.entries %}
+                  <div class="border rounded p-2 bg-light-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <span class="badge bg-primary me-1">{{ entry.task }}</span>
+                        <span class="badge bg-secondary ms-2">{{ entry.ticket_number }}</span>
+                      </div>
+                      <div>
+                        <a href="{% url 'update_entry' entry.pk %}" class="btn btn-sm btn-outline-warning">✎</a>
+                        <a href="{% url 'delete_entry' entry.pk %}" class="btn btn-sm btn-outline-danger">🗑</a>
+                      </div>
+                    </div>
+                    <small class="text-muted d-block mt-1" data-bs-toggle="tooltip" title="{{ entry.description }}">
+                      {{ entry.description|truncatewords:12 }}
+                    </small>
+                  </div>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="fw-bold text-primary">{{ day.total_time }} hrs</td>
+
+          {% else %}
+            <td colspan="5" class="text-muted">No entry</td>
+            <td>-</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Bootstrap Tooltip Activation -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+</script>
+{% endblock %}
