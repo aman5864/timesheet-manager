@@ -28,7 +28,7 @@ SECRET_KEY = SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='')
+ALLOWED_HOSTS = ['timesheet-manager-production.up.railway.app', '127.0.0.1', 'localhost']
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = 'week_view'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
