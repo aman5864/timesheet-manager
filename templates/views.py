@@ -99,7 +99,7 @@ def verify_otp(request):
             request.session.pop('user_id', None)
 
             messages.success(request, 'Email verified and logged in successfully.')
-            return redirect('week_view')
+            return redirect('direct')
         else:
             messages.error(request, 'Invalid OTP.')
 
@@ -316,7 +316,7 @@ def custom_login_view(request):
             if user:
                 if user.is_active:
                     login(request, user)
-                    return redirect('week_view')
+                    return redirect('direct')
                 else:
                     # User is not verified, resend OTP
                     otp = random.randint(100000, 999999)

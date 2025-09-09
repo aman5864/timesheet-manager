@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Usage Report Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .hover-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    .clickable {
+      cursor: pointer;
+    }
+    .badge-status {
+      margin-right: 5px;
+    }
+    .section-card {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    #userCardsContainer::-webkit-scrollbar {
+      height: 8px;
+    }
+    #userCardsContainer::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    #userCardsContainer::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar similar to base.html -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3">
+    <a class="navbar-brand" href="{% url 'direct' %}">⬅</a> 
+    <a class="navbar-brand">Usage Report</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <span class="navbar-text text-white me-3">Welcome, {{ user.email }}</span>
+        </li>
+        <li class="nav-item">
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-light">Logout</button>
+          </form>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="container mt-4">
+    <!-- 1. Upload Excel/CSV -->
+    <div class="section-card bg-light">
+      <h5>Upload Excel/CSV File</h5>
+      <form method="post" enctype="multipart/form-data" id="uploadForm">
+        {% csrf_token %}
+        <input type="file" name="file" id="fileInput" accept=".xlsx,.csv" class="form-control mb-2">
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </form>
+      <p class="mt-2" id="rowCount"></p>
+    </div>
+
+    <!-- 2. Modules dynamically generated -->
+    <div class="section-card bg-light" id="modulesSection" style="display:none;">
+      <h5>Modules</h5>
+      <div id="modulesContainer" class="d-flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- 3. Active/Deactive -->
+    <div class="section-card bg-light" id="statusSection" style="display:none;">
+      <h5>Status</h5>
+      <div id="statusContainer" class="d-flex gap-2">
+        <button class="btn btn-outline-success clickable" data-status="active">Active</button>
+        <button class="btn btn-outline-danger clickable" data-status="expired">Deactive</button>
+      </div>
+    </div>
+
+    <!-- 4. Usage Type -->
+    <div class="section-card bg-light" id="usageTypeSection" style="display:none;">
+      <h5>Usage Type</h5>
+      <div id="usageTypeContainer" class="d-flex gap-2">
+        <button class="btn btn-outline-info clickable" data-type="Trial/POC">Trial/POC</button>
+        <button class="btn btn-outline-primary clickable" data-type="Purchased">Purchase</button>
+      </div>
+    </div>
+
+    <!-- 5. User Details -->
+    <div class="section-card bg-light" id="userDetailsSection" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5>User Details</h5>
+        <button class="btn btn-sm btn-secondary" id="toggleViewBtn">Switch to List View</button>
+      </div>
+
+      <!-- Card View -->
+      <div id="userCardsContainer" class="d-flex gap-2 overflow-auto" style="white-space: nowrap;"></div>
+
+      <!-- List View -->
+      <div id="userListView" class="table-responsive" style="display:none;">
+        <table class="table table-striped" id="userListTable">
+          <thead>
+            <tr id="userListHeader"></tr>
+          </thead>
+          <tbody id="userListBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    let excelData = []; // in-memory storage
+    let uniqueModules = [];
+    let selectedModule = '';
+    let selectedStatus = '';
+    let selectedUsage = '';
+    let isListView = false;
+
+    // 1️⃣ Handle file upload
+    document.getElementById('uploadForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const file = document.getElementById('fileInput').files[0];
+      if(!file) return alert("Please select a file");
+
+      const reader = new FileReader();
+      reader.onload = function(evt){
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, {type:'array'});
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        excelData = XLSX.utils.sheet_to_json(worksheet, {defval:""});
+
+        document.getElementById('rowCount').innerText = `Total Users: ${excelData.length}`;
+
+        // extract unique modules (case-insensitive)
+        const moduleSet = new Set();
+        excelData.forEach(row=>{
+          const moduleCell = row['Modules'] || row['Module'] || row['module'] || row['MODULE'];
+          if(moduleCell){
+            moduleCell.split(',').forEach(m => moduleSet.add(m.trim()));
+          }
+        });
+        uniqueModules = Array.from(moduleSet);
+        renderModules();
+
+        // reset previous selections
+        selectedModule = '';
+        selectedStatus = '';
+        selectedUsage = '';
+        document.getElementById('statusSection').style.display = 'none';
+        document.getElementById('usageTypeSection').style.display = 'none';
+        document.getElementById('userDetailsSection').style.display = 'none';
+      }
+      reader.readAsArrayBuffer(file);
+    });
+
+    function renderModules(){
+      const container = document.getElementById('modulesContainer');
+      container.innerHTML = '';
+      uniqueModules.forEach(module=>{
+        const card = document.createElement('div');
+        card.className = 'card p-3 shadow-sm hover-card clickable';
+        card.style.minWidth = '140px';
+        card.style.display = 'inline-block';
+        card.innerHTML = `<div class="fw-bold text-center">${module}</div>`;
+        card.onclick = () => selectModule(module);
+        container.appendChild(card);
+      });
+      document.getElementById('modulesSection').style.display = 'block';
+    }
+
+    function selectModule(module){
+      selectedModule = module;
+      document.getElementById('statusSection').style.display = 'block';
+      document.getElementById('usageTypeSection').style.display = 'none';
+      document.getElementById('userDetailsSection').style.display = 'none';
+    }
+
+    // Active/Deactive buttons
+    document.querySelectorAll('#statusContainer .clickable').forEach(btn=>{
+      btn.addEventListener('click', function(){
+        selectedStatus = this.dataset.status;
+        document.getElementById('usageTypeSection').style.display = 'block';
+        document.getElementById('userDetailsSection').style.display = 'none';
+      });
+    });
+
+    // Usage Type buttons
+    document.querySelectorAll('#usageTypeContainer .clickable').forEach(btn=>{
+      btn.addEventListener('click', function(){
+        selectedUsage = this.dataset.type;
+        renderUserDetails();
+      });
+    });
+
+    // Toggle view button
+    document.getElementById('toggleViewBtn').addEventListener('click', function(){
+      isListView = !isListView;
+      if(isListView){
+        document.getElementById('userCardsContainer').style.display = 'none';
+        document.getElementById('userListView').style.display = 'block';
+        this.innerText = "Switch to Card View";
+        renderUserList();
+      } else {
+        document.getElementById('userCardsContainer').style.display = 'flex';
+        document.getElementById('userListView').style.display = 'none';
+        this.innerText = "Switch to List View";
+      }
+    });
+
+    function renderUserDetails(){
+      const filtered = excelData.filter(row=>{
+        const modules = (row['Modules'] || row['Module'] || '').split(',').map(m=>m.trim());
+        if(!modules.includes(selectedModule)) return false;
+        const status = (row['Subscription Status'] || '').toLowerCase() === 'active' ? 'active' : 'expired';
+        if(status !== selectedStatus) return false;
+        if(row['Usage Type'] !== selectedUsage) return false;
+        return true;
+      });
+
+      // Card view
+      const cardsContainer = document.getElementById('userCardsContainer');
+      cardsContainer.innerHTML = '';
+      filtered.forEach(row=>{
+        const card = document.createElement('div');
+        card.className = 'card p-3 shadow-sm hover-card';
+        card.style.minWidth = '160px';
+        card.style.display = 'inline-block';
+        card.innerHTML = `<div class="fw-bold">${row['First Name']} ${row['Last Name']}</div>
+                          <div class="text-muted small">${row['Email'] || ''}</div>`;
+        cardsContainer.appendChild(card);
+      });
+
+      document.getElementById('userDetailsSection').style.display = 'block';
+    }
+
+    function renderUserList(){
+      const filtered = excelData.filter(row=>{
+        const modules = (row['Modules'] || row['Module'] || '').split(',').map(m=>m.trim());
+        if(!modules.includes(selectedModule)) return false;
+        const status = (row['Subscription Status'] || '').toLowerCase() === 'active' ? 'active' : 'expired';
+        if(status !== selectedStatus) return false;
+        if(row['Usage Type'] !== selectedUsage) return false;
+        return true;
+      });
+
+      const tbody = document.getElementById('userListBody');
+      const thead = document.getElementById('userListHeader');
+      tbody.innerHTML = '';
+      thead.innerHTML = '';
+
+      if(filtered.length === 0) return;
+
+      Object.keys(filtered[0]).forEach(h=>{
+        const th = document.createElement('th');
+        th.innerText = h;
+        thead.appendChild(th);
+      });
+
+      filtered.forEach(row=>{
+        const tr = document.createElement('tr');
+        Object.keys(filtered[0]).forEach(h=>{
+          const td = document.createElement('td');
+          td.innerText = row[h];
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect
 
@@ -22,4 +23,6 @@ urlpatterns = [
     path('delete/<int:pk>/', views.delete_entry, name='delete_entry'),
     path('export/month/<int:year>/<int:month>/', views.export_month_excel, name='export_month_excel'),
     path('api/is_weekend/', views.is_weekend, name='is_weekend'),
+    path("direct/", TemplateView.as_view(template_name="timesheet_app/direct.html"), name="direct"),
+    path('usage-report/', TemplateView.as_view(template_name="timesheet_app/usage_report_base.html"), name='usage_report_base'),
 ]
